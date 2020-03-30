@@ -1,0 +1,127 @@
+#include <stdio.h>
+#include <math.h>
+#include <conio.h>
+
+#define N 20
+const int n = 20 * N;
+
+float function(float x) {
+	return x*sin(2*x);
+}
+void tab(float x0, float h1, float x[], float y[], int nn) {
+	float z = x0;
+	for (int i = 0; i < nn + 1; i++) {
+		x[i] = z;
+		y[i] = function(x[i]);
+		z = z + h1;
+	}
+
+}
+void koef_c(float h[], float y[], float c[]) {
+	float alpha[N + 1], beta[N + 1], gamma[N + 1], delta[N + 1];
+	float A[N], B[N];
+	alpha[1] = 0;
+	beta[1] = 1;
+	gamma[1] = 0;
+	delta[1] = 0;
+
+	for (int i = 2; i< N + 1; i++) {
+		alpha[i] = h[i - 1];
+		beta[i] = 2 * (h[i - 1] + h[i]);
+		gamma[i] = h[i];
+		delta[i] = 3 * (((y[i] - y[i - 1]) / h[i]) - ((y[i - 1] - y[i - 2]) / h[i - 1]));
+	}
+
+	A[1] = -gamma[1] / beta[1];
+	B[1] = delta[1] / beta[1];
+
+	for (int i = 2; i < N; i++) {
+		A[i] = -gamma[i] / (alpha[i] * A[i - 1] + beta[i]);
+		B[i] = (delta[i] - (alpha[i] * B[i - 1])) / ((alpha[i] * A[i - 1]) + beta[i]);
+	}
+
+	c[N] = (delta[N] - alpha[N] * B[N - 1]) / (alpha[N] * A[N - 1] + beta[N]);
+	for (int i = N; i > 1; i--) {
+		c[i - 1] = A[i - 1] * c[i] + B[i - 1];
+	}
+}
+void koef_a(float y[], float a[]) {
+	for (int i = 1; i < N + 1; i++) {
+		a[i] = y[i - 1];
+	}
+}
+void koef_b(float h[], float y[], float c[], float b[]) {
+	for (int i = 1; i < N; i++) {
+		b[i] = ((y[i] - y[i - 1]) / h[i]) - (h[i] * (c[i + 1] + 2 * c[i]) / 3);
+	}
+	b[N] = ((y[N] - y[N - 1]) / h[N]) - (2 * h[N] * c[N] / 3);
+}
+void koef_d(float h[], float c[], float d[]) {
+	for (int i = 1; i < N; i++) {
+		d[i] = (c[i + 1] - c[i]) / (3 * h[i]);
+	}
+	d[N] = -c[N] / (3 * h[N]);
+}
+void S_tab(float x1[], float x[], float a[], float b[], float c[], float d[], float S[]) {
+	int i = 1;
+	for (int j = 0; j < n + 1; j++) {
+		S[j] = a[i] + b[i] * (x1[j] - x[i - 1]) + c[i] * pow((x1[j] - x[i - 1]), 2) + d[i] * pow((x1[j] - x[i - 1]), 3);
+		if ((j) % 20 == 0 && j != 0) {
+			i++;
+		}
+	}
+}
+void eps_tab(float y1[], float S[], float eps[]) {
+	for (int j = 0; j < n + 1; j++) {
+		eps[j] = fabs(S[j] - y1[j]);
+	}
+}
+int main(int argc, char **argv)
+{
+	FILE *f, *f1;
+
+	float x[N + 1], y[N + 1];
+	float h[N + 1];
+	float a[N + 1], b[N + 1], c[N + 1], d[N + 1];
+	float S[n + 1];
+	float x1[n + 1];
+	float y1[n + 1];
+	float eps[n + 1];
+	float x0, xn;
+
+	x0 = -10;
+	xn = 14;
+	float h1 = (xn - x0) / N;
+	float h2 = (xn - x0) / n;
+	tab(x0, h1, x, y, N);
+	f = fopen("in_tab.txt", "wt");
+	for (int i = 0; i < N + 1; i++) {
+		fprintf(f, "%f \t  %f \n", x[i], y[i]);
+	}
+	fclose(f);
+	f = fopen("in_tab.txt", "rt");
+	for (int i = 0; i < N + 1; i++) {
+		fscanf(f, "%f %f", &x[i], &y[i]);
+		printf("x[%d] = %f \t y[%d] = %f \n", i, x[i], i, y[i]);
+	}
+	for (int i = 1; i<N + 1; i++) {
+		h[i] = x[i] - x[i - 1];
+	}
+	koef_c(h, y, c);
+	koef_a(y, a);
+	koef_b(h, y, c, b);
+	koef_d(h, c, d);
+	tab(x0, h2, x1, y1, n);
+
+	S_tab(x1, x, a, b, c, d, S);
+	eps_tab(y1, S, eps);
+	f1 = fopen("out_tab.txt", "wt");
+	for (int i = 0; i < n + 1; i++) {
+		printf("x1[%d] = %f \t y1[%d] = %f \t S[%d] = %f \t eps[%d] = %f\n", i, x1[i], i, y1[i], i, S[i], i, eps[i]);
+		fprintf(f1, "%f \t %f \t %f \t %f\n", x1[i], y1[i], S[i], eps[i]);
+	}
+	fclose(f1);
+
+	getch();
+	return 0;
+}
